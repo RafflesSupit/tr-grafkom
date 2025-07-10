@@ -15,6 +15,8 @@
 #include <fstream> // Untuk file I/O jika diperlukan
 #include <string> // Untuk string jika diperlukan
 #include <cstring> // Untuk memset jika diperlukan
+#include <algorithm> // Untuk std::sort dan std::unique
+#include <iomanip> // Untuk std::fixed dan std::setprecision
 
 // Definisi M_PI yang lebih presisi
 #ifndef M_PI
@@ -377,16 +379,17 @@ void drawFence()
 
     // Draw the rectangular wall base (excluding front entrance area and parking access)
     // Front wall segments
-    drawCube(8.0f, wallY, 10.0f, 16.0f, wallHeight, 0.5f);      // Front wall right side
-    drawCube(-4.0f, wallY, 10.0f, 16.0f, wallHeight, 0.5f);     // Front wall left side
+    drawCube(-7.0f, wallY, 10.0f, 10.0f, wallHeight, 0.5f); // Front wall left side (-12.0 to -2.0)
+    drawCube(11.0f, wallY, 10.0f, 10.0f, wallHeight, 0.5f); // Front wall right side (6.0 to 16.0)
     // Back wall
-    drawCube(2.0f, wallY, -10.0f, wallWidth, wallHeight, 0.5f);
+    drawCube(2.0f, wallY, -10.0f, wallWidth, wallHeight, 0.5f); // Back wall (-12.0 to 16.0)
     // Left wall
-    drawCube(-12.0f, wallY, 0.0f, 0.5f, wallHeight, 20.0f); // Corrected depth
+    drawCube(-12.0f, wallY, 0.0f, 0.5f, wallHeight, 20.0f); // Left wall (-10.0 to 10.0)
 
     // Right wall with gate opening for parking access
-    drawCube(16.0f, wallY, 6.0f, 0.5f, wallHeight, 8.0f);  // Right wall top segment
-    drawCube(16.0f, wallY, -6.0f, 0.5f, wallHeight, 8.0f); // Right wall bottom segment
+    // Adjusted segments to create a clear opening for the gate
+    drawCube(16.0f, wallY, -6.25f, 0.5f, wallHeight, 7.5f); // Right wall bottom segment (-10.0 to -2.5)
+    drawCube(16.0f, wallY, 6.25f, 0.5f, wallHeight, 7.5f);  // Right wall top segment (2.5 to 10.0)
 
     // Parking gate structure (pillars)
     setColorub(120, 120, 120); // Darker gray for gate pillars
@@ -451,49 +454,71 @@ void drawFence()
     setColor(0.3f, 0.3f, 0.3f); // Dark gray for iron
 
     // Helper lambda for drawing fence segment (post and rails)
-    auto drawFenceSegment = [&](float startX, float endX, float zPos, bool isHorizontal) {
-        float step = 1.5f;
-        if (isHorizontal) { // For horizontal fence lines (X-axis)
-            for (float x = startX; x <= endX; x += step) {
-                drawCube(x, postY, zPos, postWidth, fenceHeight, postDepth); // Post
-                // Draw rail only if it connects to another post or is the last segment
-                if (x + step <= endX + 0.01f || (x + postWidth / 2.0f >= endX - step && x + postWidth / 2.0f <= endX + step)) {
-                    drawCube(x + step / 2.0f, topY, zPos, step, railThickness, railThickness);
-                    drawCube(x + step / 2.0f, midY, zPos, step, railThickness, railThickness);
-                    drawCube(x + step / 2.0f, botY, zPos, step, railThickness, railThickness);
-                }
+    auto drawFenceSegment = [&](float startCoord, float endCoord, float fixedCoord, bool isHorizontal) {
+        float segmentLength = 1.5f; // Distance between posts
+        std::vector<float> postPositions;
+
+        // Collect all post positions
+        for (float currentCoord = startCoord; currentCoord <= endCoord + 0.001f; currentCoord += segmentLength) {
+            postPositions.push_back(currentCoord);
+        }
+        // Ensure the very end is included if not perfectly aligned
+        if (std::abs(postPositions.back() - endCoord) > 0.001f) {
+            postPositions.push_back(endCoord);
+        }
+
+        // Sort and remove duplicates (due to floating point precision or exact alignment)
+        std::sort(postPositions.begin(), postPositions.end());
+        postPositions.erase(std::unique(postPositions.begin(), postPositions.end(), [](float a, float b) { return std::abs(a - b) < 0.001f; }), postPositions.end());
+
+
+        // Draw posts
+        for (float pos : postPositions) {
+            if (isHorizontal) { // X-axis fence
+                drawCube(pos, postY, fixedCoord, postWidth, fenceHeight, postDepth);
+            }
+            else { // Z-axis fence
+                drawCube(fixedCoord, postY, pos, postWidth, fenceHeight, postDepth);
             }
         }
-        else { // For vertical fence lines (Z-axis)
-            for (float z = startX; z <= endX; z += step) {
-                drawCube(zPos, postY, z, postWidth, fenceHeight, postDepth); // Post
-                // Draw rail only if it connects to another post or is the last segment
-                if (z + step <= endX + 0.01f || (z + postWidth / 2.0f >= endX - step && z + postWidth / 2.0f <= endX + step)) {
-                    drawCube(zPos, topY, z + step / 2.0f, railThickness, railThickness, step);
-                    drawCube(zPos, midY, z + step / 2.0f, railThickness, railThickness, step);
-                    drawCube(zPos, botY, z + step / 2.0f, railThickness, railThickness, step);
-                }
+
+        // Draw rails between adjacent posts
+        for (size_t i = 0; i < postPositions.size() - 1; ++i) {
+            float p1 = postPositions[i];
+            float p2 = postPositions[i + 1];
+            float railCenter = (p1 + p2) / 2.0f;
+            float railLength = p2 - p1;
+
+            if (isHorizontal) {
+                drawCube(railCenter, topY, fixedCoord, railLength, railThickness, railThickness);
+                drawCube(railCenter, midY, fixedCoord, railLength, railThickness, railThickness);
+                drawCube(railCenter, botY, fixedCoord, railLength, railThickness, railThickness);
+            }
+            else {
+                drawCube(fixedCoord, topY, railCenter, railThickness, railThickness, railLength);
+                drawCube(fixedCoord, midY, railCenter, railThickness, railThickness, railLength);
+                drawCube(fixedCoord, botY, railCenter, railThickness, railThickness, railLength);
             }
         }
         };
 
     // Front side - right section (after entrance)
-    drawFenceSegment(8.0f, 15.5f, 10.0f, true);
+    drawFenceSegment(6.0f, 16.0f, 10.0f, true);
 
     // Front side - left section (before entrance)
-    drawFenceSegment(-12.0f, -4.5f, 10.0f, true);
+    drawFenceSegment(-12.0f, -2.0f, 10.0f, true);
 
     // Back side
-    drawFenceSegment(-12.0f, 15.5f, -10.0f, true);
+    drawFenceSegment(-12.0f, 16.0f, -10.0f, true);
 
     // Left side
-    drawFenceSegment(-10.0f, 9.5f, -12.0f, false);
+    drawFenceSegment(-10.0f, 10.0f, -12.0f, false);
 
     // Right side (split due to gate) - bottom segment
-    drawFenceSegment(-10.0f, -2.5f, 16.0f, false);
+    drawFenceSegment(-10.0f, -2.5f, 16.0f, false); // Adjusted end coordinate to create gap
 
     // Right side (split due to gate) - top segment
-    drawFenceSegment(3.5f, 9.5f, 16.0f, false);
+    drawFenceSegment(2.5f, 10.0f, 16.0f, false); // Adjusted start coordinate to create gap
 }
 
 void drawMainBuilding()
@@ -623,6 +648,7 @@ void drawPavedArea()
 }
 
 // Fungsi untuk menggambar satu unit lampu jalan
+// Sekarang menerima GLenum light_id untuk mengontrol sumber cahaya individual
 void drawStreetLight(float x, float y, float z, GLenum light_id) {
     glPushMatrix();
     glTranslatef(x, y, z);
@@ -641,9 +667,20 @@ void drawStreetLight(float x, float y, float z, GLenum light_id) {
 
     // Light source visual (bagian yang bersinar)
     if (isNightMode) {
-        setColor(1.0f, 1.0f, 0.8f); // Kuning terang
+        // Atur properti material emissive agar bagian ini "bersinar"
+        GLfloat light_emissive[] = { 1.0f, 1.0f, 0.8f, 1.0f }; // Kuning terang
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, light_emissive);
         drawCube(0.0f, 7.7f, 0.8f, 0.3f, 0.3f, 0.3f); // Bagian yang bersinar
+        // Reset emissive setelah menggambar agar tidak mempengaruhi objek lain
+        GLfloat no_emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, no_emissive);
     }
+    else {
+        // Dalam mode siang, bagian ini tidak bersinar
+        setColor(0.6f, 0.6f, 0.6f); // Warna casing lampu normal
+        drawCube(0.0f, 7.7f, 0.8f, 0.3f, 0.3f, 0.3f);
+    }
+
 
     // Atur posisi sumber cahaya OpenGL untuk lampu ini
     // Posisi ini relatif terhadap modelview matrix saat ini (setelah glTranslatef)
@@ -710,13 +747,11 @@ void drawScene()
         GLfloat globalAmbientNight[] = { 0.1f, 0.1f, 0.15f, 1.0f };
         glLightModelfv(GL_LIGHT_MODEL_AMBIENT, globalAmbientNight);
 
-        // Aktifkan semua lampu jalan yang digunakan
+        // Aktifkan lampu jalan yang digunakan
         glEnable(GL_LIGHT1);
         glEnable(GL_LIGHT2);
         glEnable(GL_LIGHT3);
         glEnable(GL_LIGHT4);
-        glEnable(GL_LIGHT5);
-        glEnable(GL_LIGHT6);
 
     }
     else {
@@ -737,8 +772,6 @@ void drawScene()
         glDisable(GL_LIGHT2);
         glDisable(GL_LIGHT3);
         glDisable(GL_LIGHT4);
-        glDisable(GL_LIGHT5);
-        glDisable(GL_LIGHT6);
     }
 
 
@@ -753,15 +786,14 @@ void drawScene()
     drawCanopy();
     drawParkingArea();
 
+    // Gambar lampu jalan (jumlah dikurangi) dan atur posisi sumber cahaya
     // Sisi kiri jalan
     drawStreetLight(-10.0f, 0.0f, 15.0f, GL_LIGHT1);
-    drawStreetLight(0.0f, 0.0f, 15.0f, GL_LIGHT2);
-    drawStreetLight(10.0f, 0.0f, 15.0f, GL_LIGHT3);
+    drawStreetLight(10.0f, 0.0f, 15.0f, GL_LIGHT2);
 
     // Sisi kanan jalan
-    drawStreetLight(-10.0f, 0.0f, 25.0f, GL_LIGHT4);
-    drawStreetLight(0.0f, 0.0f, 25.0f, GL_LIGHT5);
-    drawStreetLight(10.0f, 0.0f, 25.0f, GL_LIGHT6);
+    drawStreetLight(-10.0f, 0.0f, 25.0f, GL_LIGHT3);
+    drawStreetLight(10.0f, 0.0f, 25.0f, GL_LIGHT4);
 
 
     glutSwapBuffers();
@@ -812,7 +844,7 @@ void keyboard(unsigned char key, int x, int y)
         std::cout << "Mode: " << (isNightMode ? "Night" : "Day") << std::endl;
         break;
     case 27: // ESC key
-        exit(0);
+         exit(0);
         break;
     }
     glutPostRedisplay();
@@ -865,8 +897,7 @@ void setupLighting()
     glEnable(GL_LIGHT2);
     glEnable(GL_LIGHT3);
     glEnable(GL_LIGHT4);
-    glEnable(GL_LIGHT5);
-    glEnable(GL_LIGHT6);
+    // GL_LIGHT5 dan GL_LIGHT6 tidak lagi digunakan karena jumlah lampu berkurang
 
     // Aktifkan GL_COLOR_MATERIAL agar glColor3f/ub dapat mengatur properti material
     glEnable(GL_COLOR_MATERIAL);
@@ -885,13 +916,13 @@ void setupLighting()
     glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
     glLightfv(GL_LIGHT0, GL_SPECULAR, light0_specular);
 
-    // Konfigurasi GL_LIGHT1 hingga GL_LIGHT6 (Lampu Jalan)
+    // Konfigurasi GL_LIGHT1 hingga GL_LIGHT4 (Lampu Jalan)
     // Properti ini akan sama untuk semua lampu jalan, hanya posisi yang berbeda
     GLfloat light_street_ambient[] = { 0.05f, 0.05f, 0.0f, 1.0f }; // Sedikit ambient kuning
     GLfloat light_street_diffuse[] = { 0.8f, 0.8f, 0.6f, 1.0f };  // Cahaya kuning terang
     GLfloat light_street_specular[] = { 0.5f, 0.5f, 0.4f, 1.0f }; // Sorotan kuning
 
-    for (int i = 1; i <= 6; ++i) { // Loop untuk LIGHT1 hingga LIGHT6
+    for (int i = 1; i <= 4; ++i) { // Loop untuk LIGHT1 hingga LIGHT4
         GLenum current_light = GL_LIGHT0 + i;
         glLightfv(current_light, GL_AMBIENT, light_street_ambient);
         glLightfv(current_light, GL_DIFFUSE, light_street_diffuse);
@@ -914,24 +945,26 @@ void setupLighting()
 int main(int argc, char** argv)
 {
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GL_DEPTH);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowPosition(100, 100);
     glutInitWindowSize(1024, 768);
-    glutCreateWindow("Tugas Rancang AST - Tiong Ting Salatiga");
 
-    glEnable(GL_DEPTH_TEST); // Penting untuk objek 3D
-    setupLighting();         // Panggil fungsi setup lighting
+    int window = glutCreateWindow("Tugas Rancang AST - Tiong Ting Salatiga");
 
-    // Warna latar belakang awal (siang)
+    glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
+    glutSetWindowTitle("Tugas Rancang AST - Tiong Ting Salatiga");
+
+    glEnable(GL_DEPTH_TEST);
+    setupLighting();
+
     glClearColor(0.6f, 0.7f, 0.9f, 1.0f);
-
-    glutFullScreen();
 
     glutDisplayFunc(drawScene);
     glutReshapeFunc(reshape);
     glutKeyboardFunc(keyboard);
     glutMouseFunc(mouse);
     glutMotionFunc(mouseMotion);
-    glutIdleFunc([]() { glutPostRedisplay(); }); // Auto-redraw for continuous animation/camera updates
+    glutIdleFunc([]() { glutPostRedisplay(); });
 
     std::cout << "Controls:" << std::endl;
     std::cout << "WASD - Move camera horizontally" << std::endl;
