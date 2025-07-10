@@ -50,7 +50,6 @@ void drawCube(float x, float y, float z, float width, float height, float depth)
     glTranslatef(x, y, z);
     glScalef(width, height, depth);
 
-    // Kubus memiliki 6 sisi, setiap sisi memiliki normal yang berbeda
     // Front face
     glBegin(GL_QUADS);
     glNormal3f(0.0f, 0.0f, 1.0f); // Normal ke arah Z positif
@@ -377,19 +376,18 @@ void drawFence()
     float botY = fenceBaseY + 0.05f;
     float postY = fenceBaseY + fenceHeight / 2.0f;
 
-    // Draw the rectangular wall base (excluding front entrance area and parking access)
     // Front wall segments
-    drawCube(-7.0f, wallY, 10.0f, 10.0f, wallHeight, 0.5f); // Front wall left side (-12.0 to -2.0)
-    drawCube(11.0f, wallY, 10.0f, 10.0f, wallHeight, 0.5f); // Front wall right side (6.0 to 16.0)
+    drawCube(-7.0f, wallY, 10.0f, 10.0f, wallHeight, 0.5f); // Front wall left side
+    drawCube(11.0f, wallY, 10.0f, 10.0f, wallHeight, 0.5f); // Front wall right side
     // Back wall
-    drawCube(2.0f, wallY, -10.0f, wallWidth, wallHeight, 0.5f); // Back wall (-12.0 to 16.0)
+    drawCube(2.0f, wallY, -10.0f, wallWidth, wallHeight, 0.5f); // Back wall
     // Left wall
-    drawCube(-12.0f, wallY, 0.0f, 0.5f, wallHeight, 20.0f); // Left wall (-10.0 to 10.0)
+    drawCube(-12.0f, wallY, 0.0f, 0.5f, wallHeight, 20.0f); // Left wall
 
     // Right wall with gate opening for parking access
     // Adjusted segments to create a clear opening for the gate
-    drawCube(16.0f, wallY, -6.25f, 0.5f, wallHeight, 7.5f); // Right wall bottom segment (-10.0 to -2.5)
-    drawCube(16.0f, wallY, 6.25f, 0.5f, wallHeight, 7.5f);  // Right wall top segment (2.5 to 10.0)
+    drawCube(16.0f, wallY, -6.25f, 0.5f, wallHeight, 7.5f); // Right wall bottom segment
+    drawCube(16.0f, wallY, 6.25f, 0.5f, wallHeight, 7.5f);  // Right wall top segment
 
     // Parking gate structure (pillars)
     setColorub(120, 120, 120); // Darker gray for gate pillars
@@ -450,6 +448,7 @@ void drawFence()
 
     glPopMatrix();
 
+
     // Iron fence - positioned ON TOP of concrete wall
     setColor(0.3f, 0.3f, 0.3f); // Dark gray for iron
 
@@ -467,7 +466,7 @@ void drawFence()
             postPositions.push_back(endCoord);
         }
 
-        // Sort and remove duplicates (due to floating point precision or exact alignment)
+        // Sort and remove duplicates
         std::sort(postPositions.begin(), postPositions.end());
         postPositions.erase(std::unique(postPositions.begin(), postPositions.end(), [](float a, float b) { return std::abs(a - b) < 0.001f; }), postPositions.end());
 
@@ -690,6 +689,89 @@ void drawStreetLight(float x, float y, float z, GLenum light_id) {
     glPopMatrix();
 }
 
+void drawMainGate() {
+    // Pilar gapura kiri
+    setColorub(120, 120, 120); // Warna abu-abu gelap
+    drawCube(16.0f, 3.0f, -2.0f, 0.8f, 6.0f, 0.6f); // Pilar kiri
+
+    // Pilar gapura kanan
+    drawCube(16.0f, 3.0f, 2.0f, 0.8f, 6.0f, 0.6f);  // Pilar kanan
+
+    // Palang atas gapura
+    setColorub(80, 80, 80); // Warna abu-abu lebih gelap
+    drawCube(16.2f, 6.0f, 0.0f, 0.3f, 0.5f, 5.0f);  // Palang horizontal
+
+    // Papan nama gapura
+    setColorub(60, 60, 60); // Warna abu-abu sangat gelap
+    drawCube(16.4f, 5.0f, 0.0f, 0.1f, 2.0f, 3.0f); // Papan nama
+
+    // Tulisan pada gapura
+    glPushMatrix();
+    glTranslatef(16.5f, 5.0f, 0.0f);
+    setColor(1.0f, 1.0f, 1.0f); // Warna putih
+    glScalef(0.003f, 0.003f, 0.003f);
+    glRotatef(90, 0, 1, 0); // Rotasi 90 derajat agar tulisan menghadap ke depan
+
+    // Baris pertama
+    glPushMatrix();
+    glTranslatef(-400.0f, 200.0f, 0.0f);
+    const char* text1 = "RUMAH DUKA";
+    for (const char* c = text1; *c != '\0'; c++) {
+        glutStrokeCharacter(GLUT_STROKE_ROMAN, *c);
+    }
+    glPopMatrix();
+
+    // Baris kedua
+    glPushMatrix();
+    glTranslatef(-400.0f, 0.0f, 0.0f);
+    const char* text2 = "TIONG TING";
+    for (const char* c = text2; *c != '\0'; c++) {
+        glutStrokeCharacter(GLUT_STROKE_ROMAN, *c);
+    }
+    glPopMatrix();
+
+    // Baris ketiga
+    glPushMatrix();
+    glTranslatef(-350.0f, -200.0f, 0.0f);
+    const char* text3 = "SALATIGA";
+    for (const char* c = text3; *c != '\0'; c++) {
+        glutStrokeCharacter(GLUT_STROKE_ROMAN, *c);
+    }
+    glPopMatrix();
+
+    glPopMatrix();
+
+    // Lampu gapura
+    setColorub(255, 255, 200); // Warna kuning terang
+    drawCube(16.0f, 5.8f, -2.3f, 0.2f, 0.2f, 0.2f); // Lampu kiri
+    drawCube(16.0f, 5.8f, 2.3f, 0.2f, 0.2f, 0.2f);  // Lampu kanan
+
+    // Sumber cahaya untuk lampu gapura (hanya aktif di malam hari)
+    if (isNightMode) {
+        glEnable(GL_LIGHT5);
+        GLfloat gateLightPos1[] = { 16.0f, 5.8f, -2.3f, 1.0f };
+        GLfloat gateLightPos2[] = { 16.0f, 5.8f, 2.3f, 1.0f };
+        GLfloat gateLightDiffuse[] = { 0.9f, 0.9f, 0.7f, 1.0f };
+
+        glLightfv(GL_LIGHT5, GL_POSITION, gateLightPos1);
+        glLightfv(GL_LIGHT5, GL_DIFFUSE, gateLightDiffuse);
+        glLightf(GL_LIGHT5, GL_CONSTANT_ATTENUATION, 1.0f);
+        glLightf(GL_LIGHT5, GL_LINEAR_ATTENUATION, 0.05f);
+        glLightf(GL_LIGHT5, GL_QUADRATIC_ATTENUATION, 0.01f);
+
+        glEnable(GL_LIGHT6);
+        glLightfv(GL_LIGHT6, GL_POSITION, gateLightPos2);
+        glLightfv(GL_LIGHT6, GL_DIFFUSE, gateLightDiffuse);
+        glLightf(GL_LIGHT6, GL_CONSTANT_ATTENUATION, 1.0f);
+        glLightf(GL_LIGHT6, GL_LINEAR_ATTENUATION, 0.05f);
+        glLightf(GL_LIGHT6, GL_QUADRATIC_ATTENUATION, 0.01f);
+    }
+    else {
+        glDisable(GL_LIGHT5);
+        glDisable(GL_LIGHT6);
+    }
+}
+
 
 void drawEnvironment()
 {
@@ -782,11 +864,12 @@ void drawScene()
     drawFence();
     drawMainBuilding();
     drawInterior();
+    drawMainGate();
     drawRoof();
     drawCanopy();
     drawParkingArea();
 
-    // Gambar lampu jalan (jumlah dikurangi) dan atur posisi sumber cahaya
+    // Gambar lampu jalan dan atur posisi sumber cahaya
     // Sisi kiri jalan
     drawStreetLight(-10.0f, 0.0f, 15.0f, GL_LIGHT1);
     drawStreetLight(10.0f, 0.0f, 15.0f, GL_LIGHT2);
@@ -928,6 +1011,20 @@ void setupLighting()
         glLightfv(current_light, GL_DIFFUSE, light_street_diffuse);
         glLightfv(current_light, GL_SPECULAR, light_street_specular);
         // Tambahkan redaman cahaya (attenuation) agar cahaya lampu jalan tidak terlalu jauh
+        glLightf(current_light, GL_CONSTANT_ATTENUATION, 1.0f);
+        glLightf(current_light, GL_LINEAR_ATTENUATION, 0.05f);
+        glLightf(current_light, GL_QUADRATIC_ATTENUATION, 0.01f);
+    }
+
+    GLfloat gate_light_ambient[] = { 0.1f, 0.1f, 0.05f, 1.0f };
+    GLfloat gate_light_diffuse[] = { 0.9f, 0.9f, 0.7f, 1.0f };
+    GLfloat gate_light_specular[] = { 0.5f, 0.5f, 0.4f, 1.0f };
+
+    for (int i = 5; i <= 6; ++i) {
+        GLenum current_light = GL_LIGHT0 + i;
+        glLightfv(current_light, GL_AMBIENT, gate_light_ambient);
+        glLightfv(current_light, GL_DIFFUSE, gate_light_diffuse);
+        glLightfv(current_light, GL_SPECULAR, gate_light_specular);
         glLightf(current_light, GL_CONSTANT_ATTENUATION, 1.0f);
         glLightf(current_light, GL_LINEAR_ATTENUATION, 0.05f);
         glLightf(current_light, GL_QUADRATIC_ATTENUATION, 0.01f);
